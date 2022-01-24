@@ -20,6 +20,14 @@ namespace ACT.DieMoe.Downloader
 		string downloadFileUrl;
 		string fileName;
 		List<downloadChunkInfo> chunkList;
+		public long downloadSize;
+		public long fileSize;
+		private object locker = new object();
+		public FileDownloadProcess fileDownloadProcess { get; set; } = null;
+		public FileDownloadFinish fileDownloadFinishCallBack { get; set; } = null;
+		public delegate void FileDownloadProcess(float downloadSize);
+		public delegate void FileDownloadFinish();
+		public int downloadFinishChunkNum = 0;
 		public NyaDownloader(HttpClient downloadHttpClient, string fileHttpUrl, int downloadThread, long downloadChunkSize, string downloadFileSavePath, string downloadFileName)
 		{
 			client = downloadHttpClient;
@@ -49,13 +57,12 @@ namespace ACT.DieMoe.Downloader
 					copy.isBeginDownload = true;
 					chunkList[i] = copy;
 					int retryTime = 0;
-					retry:
+				retry:
 					try
 					{
-						Console.WriteLine("download chunk {0}",i);
+						Console.WriteLine("download chunk {0}", i);
 						downloadChunks(chunkList[i]);
-						chunkDownloadFinish();
-						Console.WriteLine("chunk{0} downloadFinish",i);
+						Console.WriteLine("chunk{0} downloadFinish", i);
 					}
 					catch (Exception ex)
 					{
@@ -63,7 +70,7 @@ namespace ACT.DieMoe.Downloader
 						{
 							throw ex;
 						}
-						Console.WriteLine("chunk {0} retry",i);
+						Console.WriteLine("chunk {0} retry", i);
 						retryTime++;
 						goto retry;
 					}
@@ -84,9 +91,13 @@ namespace ACT.DieMoe.Downloader
 				downloadRequest.Timeout = HTTP_TIME_OUT;
 				downloadRequest.KeepAlive = true;
 				if (info.downloadSize != 0)
+				{
 					downloadRequest.AddRange(info.startRange, info.startRange + info.downloadSize);
+				}
 				else
-					downloadRequest.AddRange(info.startRange, info.startRange + CHUNK_MAX_SIZE);
+				{
+					downloadRequest.AddRange((info.startRange + (info.chunkIndex != 0 ? 1 : 0)), info.startRange + CHUNK_MAX_SIZE);
+				}
 				HttpWebResponse downloadResponse = (HttpWebResponse)downloadRequest.GetResponse();
 				httpFileStream = downloadResponse.GetResponseStream();
 				localFileStream = new FileStream(info.tempFilePath, FileMode.Create);
@@ -94,8 +105,10 @@ namespace ACT.DieMoe.Downloader
 				int getByteSize = httpFileStream.Read(buffer, 0, buffer.Length);
 				while (getByteSize > 0)
 				{
+					lock(locker)downloadSize += getByteSize;
 					localFileStream.Write(buffer, 0, getByteSize);
 					getByteSize = httpFileStream.Read(buffer, 0, buffer.Length);
+					fileDownloadProcess?.Invoke(downloadSize);
 				}
 			}
 			catch (Exception ex)
@@ -107,34 +120,28 @@ namespace ACT.DieMoe.Downloader
 				if (httpFileStream != null) httpFileStream.Dispose();
 				if (localFileStream != null) localFileStream.Dispose();
 			}
-		}
-		public void chunkDownloadFinish()
-		{
-			for (int i = 0; i < chunkList.Count; i++)
+			lock(locker)downloadFinishChunkNum++;
+			if (downloadFinishChunkNum == chunkList.Count)
 			{
-				if (!chunkList[i].isFinish)
-				{
-					break;
-				}
+				Complete();
 			}
-			// 合并
-			Complete();
 		}
 		public List<downloadChunkInfo> getDownloadChunks(long fileSize)
 		{
 			List<downloadChunkInfo> downloadChunks = new List<downloadChunkInfo>();
-			decimal numChunk = Math.Ceiling((decimal)(fileSize / CHUNK_MAX_SIZE));
+			double chunkNums = (double)fileSize / (double)CHUNK_MAX_SIZE;
+			double numChunk = Math.Ceiling(chunkNums);
 			long lastChunkSize = fileSize % CHUNK_MAX_SIZE;
 			for (int i = 0; i < numChunk; i++)
 			{
 				if (lastChunkSize != 0)
 				{
-					if (i == numChunk-1)
+					if (i == numChunk - 1)
 					{
 						downloadChunks.Add(new downloadChunkInfo()
 						{
 							chunkIndex = i,
-							startRange = i * CHUNK_MAX_SIZE,
+							startRange = i * CHUNK_MAX_SIZE+1,
 							isBeginDownload = false,
 							downloadSize = lastChunkSize,
 							tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
@@ -145,7 +152,7 @@ namespace ACT.DieMoe.Downloader
 				downloadChunks.Add(new downloadChunkInfo()
 				{
 					chunkIndex = i,
-					startRange = i * CHUNK_MAX_SIZE ==0? 1 : i * CHUNK_MAX_SIZE,
+					startRange = i * CHUNK_MAX_SIZE,
 					isBeginDownload = false,
 					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
 				});
@@ -190,6 +197,7 @@ namespace ACT.DieMoe.Downloader
 				File.Delete(file.tempFilePath);
 			}
 			AddWriter.Close();
+			fileDownloadFinishCallBack?.Invoke();
 		}
 
 		public struct downloadChunkInfo

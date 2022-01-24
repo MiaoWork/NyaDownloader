@@ -57,24 +57,24 @@ namespace ACT.DieMoe.Downloader
 					var copy = chunkList[i];
 					copy.isBeginDownload = true;
 					chunkList[i] = copy;
-					int retryTime = 0;
-				retry:
-					try
+					for (int retryTime = 0; retryTime < 5; retryTime++)
 					{
-						Console.WriteLine("download chunk {0}", i);
-						downloadChunks(chunkList[i]);
-						Console.WriteLine("chunk{0} downloadFinish", i);
-					}
-					catch (Exception ex)
-					{
-						if (retryTime == 5)
+						try
 						{
-							throw ex;
+							Console.WriteLine("download chunk {0}", i);
+							downloadChunks(chunkList[i]);
+							Console.WriteLine("chunk{0} downloadFinish", i);
+							break;
 						}
-						lock(locker)downloadSize -= CHUNK_MAX_SIZE;
-						Console.WriteLine("chunk {0} retry", i);
-						retryTime++;
-						goto retry;
+						catch (Exception ex)
+						{
+							if (retryTime == 5)
+							{
+								throw ex;
+							}
+							lock (locker) downloadSize -= CHUNK_MAX_SIZE;
+							Console.WriteLine("chunk {0} retry", i);
+						}
 					}
 				}
 			}
@@ -134,23 +134,8 @@ namespace ACT.DieMoe.Downloader
 			double chunkNums = (double)fileSize / (double)CHUNK_MAX_SIZE;
 			double numChunk = Math.Ceiling(chunkNums);
 			long lastChunkSize = fileSize % CHUNK_MAX_SIZE;
-			for (int i = 0; i < numChunk; i++)
+			for (int i = 0; i < numChunk-1; i++)
 			{
-				if (lastChunkSize != 0)
-				{
-					if (i == numChunk - 1)
-					{
-						downloadChunks.Add(new downloadChunkInfo()
-						{
-							chunkIndex = i,
-							startRange = i * CHUNK_MAX_SIZE+1,
-							isBeginDownload = false,
-							downloadSize = lastChunkSize,
-							tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
-						});
-						continue;
-					}
-				}
 				downloadChunks.Add(new downloadChunkInfo()
 				{
 					chunkIndex = i,
@@ -158,6 +143,17 @@ namespace ACT.DieMoe.Downloader
 					isBeginDownload = false,
 					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
 				});
+			}
+			if (lastChunkSize != 0)
+			{
+					downloadChunks.Add(new downloadChunkInfo()
+					{
+						chunkIndex = downloadChunks.Count,
+						startRange = downloadChunks.Count* CHUNK_MAX_SIZE + 1,
+						isBeginDownload = false,
+						downloadSize = lastChunkSize,
+						tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
+					});
 			}
 			return downloadChunks;
 		}

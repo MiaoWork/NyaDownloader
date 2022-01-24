@@ -20,7 +20,7 @@ namespace ACT.DieMoe.Downloader
 		string downloadFileUrl;
 		string fileName;
 		List<downloadChunkInfo> chunkList;
-		public long downloadSize;
+		public long downloadSize = 0;
 		public long fileSize;
 		private object locker = new object();
 		public FileDownloadProcess fileDownloadProcess { get; set; } = null;
@@ -58,7 +58,7 @@ namespace ACT.DieMoe.Downloader
 			this.fileSize = fileSize;
 			for (int i = 0; i < chunkList.Count;)
 			{
-				for (int j = taskList.Count; j < downloadThreadCount; j++, i++)
+				for (int j = taskList.Count; j < downloadThreadCount && i < chunkList.Count; j++, i++)
 				{
 					taskList.Add(
 						downloadChunkToFile(
@@ -78,38 +78,45 @@ namespace ACT.DieMoe.Downloader
 		public async Task downloadChunkToFile(string url, long startRange, long size, string fileName)
 		{
 			long chunkDownloadSize = 0;
-			try
+			for (int retryTime = 0; retryTime < 5; retryTime++)
 			{
-				/*HttpWebRequest downloadRequest = (HttpWebRequest)WebRequest.Create(downloadFileUrl);
-				downloadRequest.Timeout = HTTP_TIME_OUT;
-				downloadRequest.KeepAlive = true;
-				downloadRequest.AddRange(startRange,startRange+size);
-				HttpWebResponse downloadResponse = (HttpWebResponse)downloadRequest.GetResponse();*/
-
-				HttpRequestMessage getMessage = new HttpRequestMessage(HttpMethod.Get, downloadFileUrl);
-				getMessage.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(startRange, startRange+size);
-				Console.WriteLine("Range[{0} - {1}]",startRange,startRange+size);
-				getMessage.Headers.Add("keep-alive", "timeout=5, max=100");
-				var resp = await client.SendAsync(getMessage);
-				var stream = await resp.Content.ReadAsStreamAsync();
-				byte[] buffer = new byte[8192];
-				int getByteSize;
-				using(var fs = new FileStream(fileName, FileMode.Create))
+				try
 				{
-					do
+					/*HttpWebRequest downloadRequest = (HttpWebRequest)WebRequest.Create(downloadFileUrl);
+					downloadRequest.Timeout = HTTP_TIME_OUT;
+					downloadRequest.KeepAlive = true;
+					downloadRequest.AddRange(startRange,startRange+size);
+					HttpWebResponse downloadResponse = (HttpWebResponse)downloadRequest.GetResponse();*/
+
+					HttpRequestMessage getMessage = new HttpRequestMessage(HttpMethod.Get, downloadFileUrl);
+					getMessage.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(startRange, startRange + size);
+					Console.WriteLine("Range[{0} - {1}]", startRange, startRange + size);
+					getMessage.Headers.Add("keep-alive", "timeout=5, max=100");
+					var resp = await client.SendAsync(getMessage);
+					var stream = await resp.Content.ReadAsStreamAsync();
+					byte[] buffer = new byte[8192];
+					int getByteSize;
+					using (var fs = new FileStream(fileName, FileMode.Create))
 					{
-						getByteSize = stream.Read(buffer, 0, buffer.Length);
-						fs.Write(buffer, 0, getByteSize);
-						lock (locker) downloadSize += getByteSize;
-						chunkDownloadSize += getByteSize;
-						fileDownloadProcess?.Invoke(downloadSize);
-					} while (getByteSize > 0);
+						do
+						{
+							getByteSize = stream.Read(buffer, 0, buffer.Length);
+							fs.Write(buffer, 0, getByteSize);
+							lock (locker) downloadSize += getByteSize;
+							chunkDownloadSize += getByteSize;
+							fileDownloadProcess?.Invoke(downloadSize);
+						} while (getByteSize > 0);
+					}
+					break;
 				}
-			}
-			catch (Exception ex)
-			{
-				lock (locker) downloadSize -= chunkDownloadSize;
-				throw ex;
+				catch (Exception ex)
+				{
+					lock (locker) downloadSize -= chunkDownloadSize;
+					if (retryTime >= 5)
+					{
+						throw ex;
+					}
+				}
 			}
 		}
 		public List<downloadChunkInfo> getDownloadChunks(long fileSize)
@@ -123,7 +130,7 @@ namespace ACT.DieMoe.Downloader
 				downloadChunks.Add(new downloadChunkInfo()
 				{
 					chunkIndex = i,
-					startRange = i * CHUNK_MAX_SIZE+1,
+					startRange = i * CHUNK_MAX_SIZE + 1,
 					isBeginDownload = false,
 					downloadSize = CHUNK_MAX_SIZE - 1,
 					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))

@@ -41,6 +41,7 @@ namespace ACT.DieMoe.Downloader
 		{
 			long fileSize = getDownloadFileFullSize();
 			chunkList = getDownloadChunks(fileSize);
+			this.fileSize = fileSize;
 			for (int i = 0; i < downloadThreadCount; i++)
 			{
 				new Task(() => { downloadThread(); }).Start();
@@ -70,6 +71,7 @@ namespace ACT.DieMoe.Downloader
 						{
 							throw ex;
 						}
+						lock(locker)downloadSize -= CHUNK_MAX_SIZE;
 						Console.WriteLine("chunk {0} retry", i);
 						retryTime++;
 						goto retry;

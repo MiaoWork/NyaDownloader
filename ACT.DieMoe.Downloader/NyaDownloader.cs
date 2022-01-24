@@ -118,6 +118,7 @@ namespace ACT.DieMoe.Downloader
 				}
 			}
 			// 合并
+			Complete();
 		}
 		public List<downloadChunkInfo> getDownloadChunks(long fileSize)
 		{
@@ -166,6 +167,31 @@ namespace ACT.DieMoe.Downloader
 				throw e;
 			}
 		}
+
+		public void Complete()
+		{
+			Stream mergeFile = new FileStream(Path.Combine(fileSavePath, fileName), FileMode.Create);
+			BinaryWriter AddWriter = new BinaryWriter(mergeFile);
+			chunkList.Sort((a, b) =>
+			{
+				if (Convert.ToInt32(a.tempFilePath.Split('_').Last().Split('.').First()) > Convert.ToInt32(b.tempFilePath.Split('_').Last().Split('.').First()))
+					return 1;
+				else
+					return -1;
+			});
+			foreach (downloadChunkInfo file in chunkList)
+			{
+				using (FileStream fs = new FileStream(file.tempFilePath, FileMode.Open))
+				{
+					BinaryReader TempReader = new BinaryReader(fs);
+					AddWriter.Write(TempReader.ReadBytes((int)fs.Length));
+					TempReader.Close();
+				}
+				File.Delete(file.tempFilePath);
+			}
+			AddWriter.Close();
+		}
+
 		public struct downloadChunkInfo
 		{
 			public int chunkIndex;

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.32002.185
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ACT.DieMoe.Downloader", "ACT.DieMoe.Downloader\ACT.DieMoe.Downloader.csproj", "{E798C2BA-538F-4451-A6E7-9FDCE13E6FC9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DownloaderTestProgram", "DownloaderTestProgram\DownloaderTestProgram.csproj", "{3F5D731A-DD15-48BA-A75D-B1651497A8FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{E798C2BA-538F-4451-A6E7-9FDCE13E6FC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E798C2BA-538F-4451-A6E7-9FDCE13E6FC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E798C2BA-538F-4451-A6E7-9FDCE13E6FC9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F5D731A-DD15-48BA-A75D-B1651497A8FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F5D731A-DD15-48BA-A75D-B1651497A8FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F5D731A-DD15-48BA-A75D-B1651497A8FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F5D731A-DD15-48BA-A75D-B1651497A8FB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

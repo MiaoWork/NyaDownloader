@@ -137,32 +137,18 @@ namespace ACT.DieMoe.Downloader
 					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
 				});
 			}
-			if (numChunk > 1)
+			downloadChunks.Add(new downloadChunkInfo()
 			{
-				var copy = downloadChunks[0];
-				copy.startRange = 0;
-				copy.downloadSize = CHUNK_MAX_SIZE;
-				downloadChunks[0] = copy;
-				downloadChunks.Add(new downloadChunkInfo()
-				{
-					chunkIndex = downloadChunks.Count,
-					startRange = downloadChunks.Count * CHUNK_MAX_SIZE + 1,
-					isBeginDownload = false,
-					downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
-					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
-				});
-			}
-			else
-			{
-				downloadChunks.Add(new downloadChunkInfo()
-				{
-					chunkIndex = downloadChunks.Count,
-					startRange = downloadChunks.Count * CHUNK_MAX_SIZE,
-					isBeginDownload = false,
-					downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
-					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
-				});
-			}
+				chunkIndex = downloadChunks.Count,
+				startRange = downloadChunks.Count * CHUNK_MAX_SIZE + 1,
+				isBeginDownload = false,
+				downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
+				tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
+			});
+			var copy = downloadChunks[0];
+			copy.startRange = 0;
+			copy.downloadSize = CHUNK_MAX_SIZE;
+			downloadChunks[0] = copy;
 			return downloadChunks;
 		}
 		public long getDownloadFileFullSize()

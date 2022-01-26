@@ -113,9 +113,10 @@ namespace ACT.DieMoe.Downloader
 				catch (Exception ex)
 				{
 					lock (locker) downloadSize -= chunkDownloadSize;
+					Console.WriteLine("download Retry");
 					if (retryTime >= 5)
 					{
-						throw ex;
+						throw new ApplicationException("retry ConnectFail",ex);
 					}
 				}
 			}
@@ -189,6 +190,7 @@ namespace ACT.DieMoe.Downloader
 				File.Delete(file.tempFilePath);
 			}
 			AddWriter.Close();
+			mergeFile.Close();
 			fileDownloadFinishCallBack?.Invoke();
 		}
 

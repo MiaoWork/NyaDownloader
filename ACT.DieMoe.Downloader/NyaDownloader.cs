@@ -20,7 +20,7 @@ namespace ACT.DieMoe.Downloader
 		string downloadFileUrl;
 		string fileName;
 		List<downloadChunkInfo> chunkList;
-		public long downloadSize = 0;
+		public long downloadSize;
 		public long fileSize;
 		private object locker = new object();
 		public FileDownloadProcess fileDownloadProcess { get; set; } = null;
@@ -52,6 +52,7 @@ namespace ACT.DieMoe.Downloader
 				taskList.Remove(finsihedTask);
 			}
 			 */
+
 			List<Task> taskList = new List<Task>();
 			long fileSize = getDownloadFileFullSize();
 			chunkList = getDownloadChunks(fileSize);
@@ -88,7 +89,7 @@ namespace ACT.DieMoe.Downloader
 					downloadRequest.AddRange(startRange,startRange+size);
 					HttpWebResponse downloadResponse = (HttpWebResponse)downloadRequest.GetResponse();*/
 
-					HttpRequestMessage getMessage = new HttpRequestMessage(HttpMethod.Get, downloadFileUrl);
+					HttpRequestMessage getMessage = new HttpRequestMessage(HttpMethod.Get, url);
 					getMessage.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(startRange, startRange + size);
 					Console.WriteLine("Range[{0} - {1}]", startRange, startRange + size);
 					getMessage.Headers.Add("keep-alive", "timeout=5, max=100");
@@ -136,18 +137,32 @@ namespace ACT.DieMoe.Downloader
 					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, i))
 				});
 			}
-			var copy = downloadChunks[0];
-			copy.startRange = 0;
-			copy.downloadSize = CHUNK_MAX_SIZE;
-			downloadChunks[0] = copy;
-			downloadChunks.Add(new downloadChunkInfo()
+			if (numChunk > 1)
 			{
-				chunkIndex = downloadChunks.Count,
-				startRange = downloadChunks.Count * CHUNK_MAX_SIZE + 1,
-				isBeginDownload = false,
-				downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
-				tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
-			});
+				var copy = downloadChunks[0];
+				copy.startRange = 0;
+				copy.downloadSize = CHUNK_MAX_SIZE;
+				downloadChunks[0] = copy;
+				downloadChunks.Add(new downloadChunkInfo()
+				{
+					chunkIndex = downloadChunks.Count,
+					startRange = downloadChunks.Count * CHUNK_MAX_SIZE + 1,
+					isBeginDownload = false,
+					downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
+					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
+				});
+			}
+			else
+			{
+				downloadChunks.Add(new downloadChunkInfo()
+				{
+					chunkIndex = downloadChunks.Count,
+					startRange = downloadChunks.Count * CHUNK_MAX_SIZE,
+					isBeginDownload = false,
+					downloadSize = lastChunkSize != 0 ? lastChunkSize : CHUNK_MAX_SIZE,
+					tempFilePath = Path.Combine(Path.GetTempPath(), String.Format("{0}_{1}.tmp", fileName, downloadChunks.Count))
+				});
+			}
 			return downloadChunks;
 		}
 		public long getDownloadFileFullSize()
